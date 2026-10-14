@@ -123,7 +123,7 @@
         <h3 style="margin:8px 0">Průběžné pořadí</h3>
         <div class="sticky">
           <button id="open-round" class="btn ghost">➕ Přidat kolo</button>
-          <button id="finalize" class="btn primary">✅ Vyhodnotit</button>
+          <button id="export-csv" class="btn ghost">📥 Export CSV</button>
           <button id="print-results" class="btn ghost">🖨 Tisk / PDF</button>
           <label style="margin-left:8px; font-size:13px; color:var(--muted)"><input id="auto-sort" type="checkbox" checked /> Automatické řazení</label>
         </div>
@@ -154,16 +154,6 @@
       </div>
     </section>
 
-    <section id="final-section" style="display:none; margin-top:16px">
-      <h2 style="font-size:18px; margin-bottom:8px">Finální vyhodnocení</h2>
-      <div style="margin-bottom:8px">
-        <button id="export-csv" class="btn ghost">📥 Export CSV</button>
-      </div>
-      <div id="final-results"></div>
-      <div style="margin-top:8px">
-        <button id="close-final" class="btn ghost">Zavřít</button>
-      </div>
-    </section>
   </div>
 
   <!-- Modal backdrop (reused for text/number editing) -->
@@ -204,10 +194,6 @@
     const cancelRoundBtn = document.getElementById('cancel-round');
     const roundNameInput = document.getElementById('round-name');
 
-    const finalizeBtn = document.getElementById('finalize');
-    const finalSection = document.getElementById('final-section');
-    const finalResults = document.getElementById('final-results');
-    const closeFinalBtn = document.getElementById('close-final');
     const exportCsvBtn = document.getElementById('export-csv');
     const printBtn = document.getElementById('print-results');
 
@@ -241,18 +227,18 @@
 
       // build header
       const headerRow = document.createElement('tr');
-      headerRow.innerHTML = `<th style=\"width:70px\">Pořadí</th><th>Tým</th>`;
+      headerRow.innerHTML = `<th style="width:70px">Pořadí</th><th>Tým</th>`;
       rounds.forEach((r,i)=>{
         const name = escapeHtml(r.name || ('Kolo '+(i+1)));
         const th = document.createElement('th');
         th.className = 'round-header';
-        th.innerHTML = `<div class=\"round-title\"><span>${name}</span><span class=\"round-actions\">` +
-          `<button class=\"icon-btn edit-round\" data-round=\"${i}\" title=\"Upravit název kola\">✎</button>` +
-          `<button class=\"icon-btn delete-round\" data-round=\"${i}\" title=\"Odstranit kolo\">🗑</button>` +
+        th.innerHTML = `<div class="round-title"><span>${name}</span><span class="round-actions">` +
+          `<button class="icon-btn edit-round" data-round="${i}" title="Upravit název kola">✎</button>` +
+          `<button class="icon-btn delete-round" data-round="${i}" title="Odstranit kolo">🗑</button>` +
           `</span></div>`;
         headerRow.appendChild(th);
       });
-      headerRow.innerHTML += `<th style=\"width:180px\">Celkem bodů</th>`;
+      headerRow.innerHTML += `<th style="width:180px">Celkem bodů</th>`;
       standingsHead.innerHTML = '';
       standingsHead.appendChild(headerRow);
 
@@ -262,18 +248,18 @@
         const tr = document.createElement('tr');
         tr.dataset.teamIndex = String(idx);
         tr.draggable = !autoSort;
-        const orderTd = `<td class=\"center\">${idx+1}</td>`;
-        const teamNameHtml = `<td><div class=\"team-name\"><span class=\"drag-handle\" style=\"margin-right:8px\">☰</span><span class=\"team-label\" data-i=\"${idx}\">${escapeHtml(t.name)}</span>` +
-          `<span class=\"icons\">` +
-          `<button data-i=\"${idx}\" class=\"icon-btn edit-team\" title=\"Upravit tým\"><svg class=\"svg\" viewBox=\"0 0 24 24\" fill=\"currentColor\"><path d=\"M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z\"/></svg></button>` +
-          `<button data-i=\"${idx}\" class=\"icon-btn remove-team\" title=\"Odstranit tým\"><svg class=\"svg\" viewBox=\"0 0 24 24\" fill=\"currentColor\"><path d=\"M6 19c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z\"/></svg></button>` +
+        const orderTd = `<td class="center">${idx+1}</td>`;
+        const teamNameHtml = `<td><div class="team-name"><span class="drag-handle" style="margin-right:8px">☰</span><span class="team-label" data-i="${idx}">${escapeHtml(t.name)}</span>` +
+          `<span class="icons">` +
+          `<button data-i="${idx}" class="icon-btn edit-team" title="Upravit tým"><svg class="svg" viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button>` +
+          `<button data-i="${idx}" class="icon-btn remove-team" title="Odstranit tým"><svg class="svg" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>` +
           `</span></div></td>`;
         let row = orderTd + teamNameHtml;
         rounds.forEach((r,i)=>{
           const val = (t.scores && typeof t.scores[i] !== 'undefined') ? t.scores[i] : 0;
-          row += `<td class=\"center round-cell\" data-team=\"${idx}\" data-round=\"${i}\"><span class=\"score-val\">${val}</span><span class=\"edit-icon\" title=\"Upravit\">✎</span></td>`;
+          row += `<td class="center round-cell" data-team="${idx}" data-round="${i}"><span class="score-val">${val}</span><span class="edit-icon" title="Upravit">✎</span></td>`;
         });
-        row += `<td class=\"center\" style=\"font-weight:800\">${t.total||0}</td>`;
+        row += `<td class="center" style="font-weight:800">${t.total||0}</td>`;
         tr.innerHTML = row;
         standingsBody.appendChild(tr);
       });
@@ -287,7 +273,7 @@
       document.querySelectorAll('.remove-team').forEach(btn=>{ btn.onclick = ()=>{ const i=Number(btn.dataset.i); if(!confirm('Opravdu odstranit tým "'+teams[i].name+'"?')) return; teams.splice(i,1); saveAll(); renderStandings(); } });
       document.querySelectorAll('.edit-team').forEach(btn=>{ btn.onclick = ()=>{ const i=Number(btn.dataset.i); openModal('Upravit název týmu', teams[i].name, 'text', ()=>{ const val = modalInput.value.trim(); if(!val){ alert('Název nesmí být prázdný'); return; } teams[i].name = val; saveAll(); closeModal(); renderStandings(); }); } });
       // make team name clickable as well
-      document.querySelectorAll('.team-label').forEach(el=>{ el.onclick = ()=>{ const i = Number(el.dataset.i); openModal('Upravit názvem týmu', teams[i].name, 'text', ()=>{ const val = modalInput.value.trim(); if(!val){ alert('Název nesmí být prázdný'); return; } teams[i].name = val; saveAll(); closeModal(); renderStandings(); }); } });
+      document.querySelectorAll('.team-label').forEach(el=>{ el.onclick = ()=>{ const i = Number(el.dataset.i); openModal('Upravit název týmu', teams[i].name, 'text', ()=>{ const val = modalInput.value.trim(); if(!val){ alert('Název nesmí být prázdný'); return; } teams[i].name = val; saveAll(); closeModal(); renderStandings(); }); } });
     }
 
     function addRoundCellHandlers(){
@@ -335,7 +321,7 @@
 
     addTeamBtn.addEventListener('click', ()=>{ const name = teamNameInput.value.trim(); if(!name){ alert('Zadejte název týmu.'); return; } teams.push({ name, scores: Array(rounds.length).fill(0) }); teamNameInput.value=''; recalcTotals(); sortTeams(); saveAll(); renderStandings(); });
 
-    resetBtn.addEventListener('click', ()=>{ if(!confirm('Smazat všechna data (týmy a kola)?')) return; teams=[]; rounds=[]; saveAll(); renderStandings(); hideRoundSection(); hideFinalSection(); });
+    resetBtn.addEventListener('click', ()=>{ if(!confirm('Smazat všechna data (týmy a kola)?')) return; teams=[]; rounds=[]; saveAll(); renderStandings(); hideRoundSection(); });
 
     openRoundBtn.addEventListener('click', ()=>{ if(teams.length===0){ alert('Nejprve přidejte alespoň jeden tým.'); return; } showRoundSection(); });
 
@@ -344,7 +330,7 @@
     function showRoundSection(){ roundSection.style.display='block'; renderRoundInputs(); window.scrollTo({ top: document.body.scrollHeight, behavior:'smooth' }); }
     function hideRoundSection(){ roundSection.style.display='none'; roundNameInput.value=''; scoresInputs.innerHTML=''; }
 
-    function renderRoundInputs(){ scoresInputs.innerHTML=''; teams.forEach((t,idx)=>{ const wrapper = document.createElement('div'); wrapper.className='team-row'; wrapper.innerHTML = `<label style=\"font-weight:700\">${escapeHtml(t.name)}</label><input data-team=\"${idx}\" type=\"number\" value=\"${(t.scores && typeof t.scores[rounds.length] !== 'undefined')? t.scores[rounds.length]:0}\" />`; scoresInputs.appendChild(wrapper); }); }
+    function renderRoundInputs(){ scoresInputs.innerHTML=''; teams.forEach((t,idx)=>{ const wrapper = document.createElement('div'); wrapper.className='team-row'; wrapper.innerHTML = `<label style="font-weight:700">${escapeHtml(t.name)}</label><input data-team="${idx}" type="number" value="${(t.scores && typeof t.scores[rounds.length] !== 'undefined')? t.scores[rounds.length]:0}" />`; scoresInputs.appendChild(wrapper); }); }
 
     saveRoundBtn.addEventListener('click', ()=>{
       const roundName = roundNameInput.value.trim() || ('Kolo '+(rounds.length+1));
@@ -359,18 +345,10 @@
 
     cancelRoundBtn.addEventListener('click', ()=>{ if(confirm('Zrušit zadávání výsledků kola?')) hideRoundSection(); });
 
-    finalizeBtn.addEventListener('click', ()=>{ if(teams.length===0){ alert('Žádné týmy.'); return; } recalcTotals(); sortTeams(); showFinalSection(); });
-
-    function showFinalSection(){ finalSection.style.display='block'; buildFinalResults(); window.scrollTo({ top: document.body.scrollHeight, behavior:'smooth' }); }
-    function hideFinalSection(){ finalSection.style.display='none'; finalResults.innerHTML=''; }
-    closeFinalBtn.addEventListener('click', ()=>hideFinalSection());
-
     exportCsvBtn.addEventListener('click', ()=>{ const csv = buildCsv(); const bom='\uFEFF'; const blob = new Blob([bom+csv], { type:'text/csv;charset=utf-8;' }); const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='pubkviz.csv'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); });
     printBtn.addEventListener('click', ()=>{ window.print(); });
 
     function buildCsv(){ const header=['Pořadí','Tým']; rounds.forEach((r,i)=>header.push(r.name||('Kolo '+(i+1)))); header.push('Celkem bodů'); const rows=[header]; teams.forEach((t,idx)=>{ const row=[idx+1,t.name]; rounds.forEach((r,i)=> row.push((t.scores&&typeof t.scores[i] !== 'undefined')? t.scores[i]:0)); row.push(t.total||0); rows.push(row); }); return rows.map(r=> r.map(c=> '"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n'); }
-
-    function buildFinalResults(){ const table=document.createElement('table'); const thead=document.createElement('thead'); const trh=document.createElement('tr'); trh.innerHTML=`<th>Pořadí</th><th>Tým</th>`; rounds.forEach((r)=>{ trh.innerHTML += `<th>${escapeHtml(r.name||'')}</th>` }); trh.innerHTML += `<th>Celkem</th>`; thead.appendChild(trh); table.appendChild(thead); const tbody=document.createElement('tbody'); teams.forEach((t,idx)=>{ const tr=document.createElement('tr'); let html=`<td class=\"center\">${idx+1}</td><td>${escapeHtml(t.name)}</td>`; rounds.forEach((r,i)=> html += `<td class=\"center\">${(t.scores&&typeof t.scores[i] !== 'undefined')? t.scores[i]:0}</td>`); html += `<td class=\"center\">${t.total||0}</td>`; tr.innerHTML = html; tbody.appendChild(tr); }); table.appendChild(tbody); finalResults.innerHTML=''; finalResults.appendChild(table); }
 
     // modal helpers
     function openModal(title, value='', type='text', onSave){ modalTitle.textContent = title; modalInput.value = value===undefined? '': String(value); modalInput.type = (type==='number')? 'number':'text'; modalBackdrop.style.display='flex'; modalBackdrop.setAttribute('aria-hidden','false'); modalSaveHandler = ()=>{ if(type==='number'){ /* keep raw value */ } onSave(modalInput.value); }; setTimeout(()=>{ modalInput.focus(); modalInput.select(); },50); }
