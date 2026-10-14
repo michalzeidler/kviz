@@ -5,16 +5,14 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Pub kvíz</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
-  <!-- favicon links -->
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
-  <link rel="alternate icon" href="assets/favicon.png" type="image/png">
   <style>
     :root{
       --bg:#f6f8fa;
       --card:#ffffff;
       --muted:#6b7280;
-      --text:#55575a; /* adjusted to school logo grey */
-      --primary:#00AEEF; /* adjusted to logo blue */
+      --text:#55575a;
+      --primary:#00AEEF;
       --accent:#06b6d4;
       --danger:#ef4444;
       --success:#16a34a;
@@ -54,30 +52,25 @@
 
     .sticky { position:sticky; top:0; background:var(--card); padding:12px 0; display:flex; gap:8px; align-items:center }
 
-    /* team name with inline actions */
     .team-name{ display:flex; align-items:center; gap:10px; font-weight:700 }
     .team-name .icons{ display:inline-flex; gap:6px; margin-left:8px }
     .icon-btn { background:transparent; border:0; cursor:pointer; color:var(--muted); padding:6px; border-radius:6px }
     .icon-btn:hover{ background:rgba(0,0,0,0.04); color:var(--primary) }
     .icon-btn .svg { width:16px; height:16px; vertical-align:middle }
 
-    /* round header style */
     .round-header { white-space:nowrap }
     .round-title{ display:inline-flex; gap:8px; align-items:center; font-weight:700 }
     .round-title .round-actions{ display:inline-flex; gap:6px }
     .round-name{ cursor:pointer; }
 
-    /* modal */
     .modal-backdrop{ display:none; position:fixed; inset:0; background:rgba(2,6,23,0.6); align-items:center; justify-content:center; z-index:50 }
     .modal{ width:520px; max-width:92%; background:var(--card); padding:18px; border-radius:12px; box-shadow:0 12px 40px rgba(2,6,23,.4) }
     .modal h3{ margin:0 0 8px 0 }
     .modal .actions{ display:flex; gap:8px; justify-content:flex-end; margin-top:12px }
 
-    /* drag handle */
     .drag-handle{ cursor:grab; opacity:0.6; margin-right:8px }
     .dragging{ opacity:0.5 }
 
-    /* print styles (tweak) */
     @media print{
       body{background:#fff}
       .container{ box-shadow:none; padding:0; }
@@ -86,7 +79,6 @@
       table { font-size:14px }
     }
 
-    /* small screens */
     @media (max-width:700px){
       .row{ flex-direction:column }
       thead th{ font-size:14px }
@@ -156,7 +148,6 @@
 
   </div>
 
-  <!-- Modal backdrop (reused for text/number editing) -->
   <div id="modal-backdrop" class="modal-backdrop" role="dialog" aria-hidden="true">
     <div class="modal" role="document" aria-modal="true">
       <h3 id="modal-title">Upravit</h3>
@@ -179,7 +170,6 @@
     let rounds = JSON.parse(localStorage.getItem(STORAGE_ROUNDS) || '[]');
     let autoSort = localStorage.getItem(STORAGE_AUTO_SORT) !== 'false';
 
-    // UI elements
     const teamNameInput = document.getElementById('team-name');
     const addTeamBtn = document.getElementById('add-team');
     const resetBtn = document.getElementById('reset-data');
@@ -197,7 +187,6 @@
     const exportCsvBtn = document.getElementById('export-csv');
     const printBtn = document.getElementById('print-results');
 
-    // modal
     const modalBackdrop = document.getElementById('modal-backdrop');
     const modalTitle = document.getElementById('modal-title');
     const modalInput = document.getElementById('modal-input');
@@ -225,7 +214,6 @@
       sortTeams();
       saveAll();
 
-      // build header
       const headerRow = document.createElement('tr');
       headerRow.innerHTML = `<th style="width:70px">Pořadí</th><th>Tým</th>`;
       rounds.forEach((r,i)=>{
@@ -241,7 +229,6 @@
       standingsHead.innerHTML = '';
       standingsHead.appendChild(headerRow);
 
-      // body
       standingsBody.innerHTML = '';
       teams.forEach((t,idx)=>{
         const tr = document.createElement('tr');
@@ -250,7 +237,7 @@
         const orderTd = `<td class="center">${idx+1}</td>`;
         const teamNameHtml = `<td><div class="team-name"><span class="drag-handle" style="margin-right:8px">☰</span><span class="team-label" data-i="${idx}">${escapeHtml(t.name)}</span>` +
           `<span class="icons">` +
-          `<button data-i="${idx}" class="icon-btn remove-team" title="Odstranit tým"><svg class="svg" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>` +
+          `<button data-i="${idx}" class="icon-btn remove-team" title="Odstranit tým"><svg class="svg" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V7H6v12zm3-8h8v8H9v-8zm8-5V4a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v2h10zM10 2h4v1h-4V2z"/></svg></button>` +
           `</span></div></td>`;
         let row = orderTd + teamNameHtml;
         rounds.forEach((r,i)=>{
@@ -268,17 +255,16 @@
     function updateAutoSortLabel(){ autoSortInput.checked = autoSort; }
 
     function addRemoveHandlers(){
-      document.querySelectorAll('.remove-team').forEach(btn=>{ btn.onclick = ()=>{ const i=Number(btn.dataset.i); if(!confirm('Opravdu odstranit tým "'+teams[i].name+'"?')) return; teams.splice(i,1); saveAll(); renderStandings(); } });
-      // make team name clickable as edit
-      document.querySelectorAll('.team-label').forEach(el=>{ el.onclick = ()=>{ const i = Number(el.dataset.i); openModal('Upravit název týmu', teams[i].name, 'text', ()=>{ const val = modalInput.value.trim(); if(!val){ alert('Název nesmí být prázdný'); return; } teams[i].name = val; saveAll(); closeModal(); renderStandings(); }); } });
+      document.querySelectorAll('.remove-team').forEach(btn=>{ btn.onclick = ()=>{ const i=Number(btn.dataset.i); if(!confirm('Opravdu odstranit tým "'+teams[i].name+'"?')) return; teams.splice(i,1); saveAll(); renderStandings(); }; });
+      document.querySelectorAll('.team-label').forEach(el=>{ el.onclick = ()=>{ const i = Number(el.dataset.i); openModal('Upravit název týmu', teams[i].name, 'text', ()=>{ const val = modalInput.value.trim(); if(!val){ alert('Název týmu nesmí být prázdný.'); return; } teams[i].name = val; saveAll(); closeModal(); renderStandings(); }); }; });
     }
 
     function addRoundCellHandlers(){
       document.querySelectorAll('.round-cell').forEach(td => {
-        td.onclick = (e)=>{
+        td.onclick = ()=>{
           const teamIdx = Number(td.dataset.team);
           const roundIdx = Number(td.dataset.round);
-          openModal('Upravit skóre', (teams[teamIdx].scores && typeof teams[teamIdx].scores[roundIdx] !== 'undefined')? String(teams[teamIdx].scores[roundIdx]) : '0', 'number', ()=>{
+          openModal('Upravit skóre', (teams[teamIdx].scores && typeof teams[teamIdx].scores[roundIdx] !== 'undefined') ? String(teams[teamIdx].scores[roundIdx]) : '0', 'number', ()=>{
             const val = modalInput.value;
             const num = Number(val);
             if(!isFinite(num)){ alert('Neplatné číslo'); return; }
@@ -291,10 +277,8 @@
     }
 
     function addRoundHeaderHandlers(){
-      // clicking the round name edits it
-      document.querySelectorAll('.round-name').forEach(el=>{ el.onclick = (e)=>{ const i = Number(el.dataset.round); openModal('Upravit název kola', rounds[i].name || ('Kolo '+(i+1)), 'text', ()=>{ const val = modalInput.value.trim(); if(!val){ alert('Název nesmí být prázdný'); return; } rounds[i].name = val; saveAll(); closeModal(); renderStandings(); }); }; });
-      // delete remains via trash icon
-      document.querySelectorAll('.delete-round').forEach(btn=>{ btn.onclick = (e)=>{ e.stopPropagation(); const idx = Number(btn.dataset.round); const label = rounds[idx].name || ('Kolo '+(idx+1)); if(!confirm('Opravdu odstranit '+label+'?')) return; rounds.splice(idx,1); teams.forEach(t=>{ if(t.scores){ t.scores.splice(idx,1); } }); recalcTotals(); saveAll(); renderStandings(); } });
+      document.querySelectorAll('.round-name').forEach(el=>{ el.onclick = ()=>{ const i = Number(el.dataset.round); openModal('Upravit název kola', rounds[i].name || ('Kolo '+(i+1)), 'text', ()=>{ const val = modalInput.value.trim(); rounds[i].name = val || ('Kolo '+(i+1)); saveAll(); closeModal(); renderStandings(); }); }; });
+      document.querySelectorAll('.delete-round').forEach(btn=>{ btn.onclick = (e)=>{ e.stopPropagation(); const idx = Number(btn.dataset.round); const label = rounds[idx].name || ('Kolo '+(idx+1)); if(!confirm('Opravdu odstranit kolo "'+label+'"?')) return; rounds.splice(idx,1); teams.forEach(t => { if(t.scores){ t.scores.splice(idx,1); } }); recalcTotals(); saveAll(); renderStandings(); }; });
     }
 
     function attachDragHandlers(){
@@ -316,9 +300,9 @@
     function onDragStart(e){ this.classList.add('dragging'); e.dataTransfer.effectAllowed='move'; e.dataTransfer.setData('text/plain', this.dataset.teamIndex); }
     function onDragEnd(){ this.classList.remove('dragging'); }
     function onDragOver(e){ e.preventDefault(); e.dataTransfer.dropEffect='move'; }
-    function onDrop(e){ e.preventDefault(); const from = Number(e.dataTransfer.getData('text/plain')); const to = Number(this.dataset.teamIndex); if(Number.isNaN(from)||Number.isNaN(to)||from===to) return; const item = teams.splice(from,1)[0]; teams.splice(to,0,item); saveAll(); renderStandings(); }
+    function onDrop(e){ e.preventDefault(); const from = Number(e.dataTransfer.getData('text/plain')); const to = Number(this.dataset.teamIndex); if(Number.isNaN(from)||Number.isNaN(to)||from===to) return; const [moved]=teams.splice(from,1); teams.splice(to,0,moved); saveAll(); renderStandings(); }
 
-    addTeamBtn.addEventListener('click', ()=>{ const name = teamNameInput.value.trim(); if(!name){ alert('Zadejte název týmu.'); return; } teams.push({ name, scores: Array(rounds.length).fill(0) }); teamNameInput.value=''; recalcTotals(); sortTeams(); saveAll(); renderStandings(); });
+    addTeamBtn.addEventListener('click', ()=>{ const name = teamNameInput.value.trim(); if(!name){ alert('Zadejte název týmu.'); return; } teams.push({ name, scores: Array(rounds.length).fill(0) }); teamNameInput.value=''; saveAll(); renderStandings(); });
 
     resetBtn.addEventListener('click', ()=>{ if(!confirm('Smazat všechna data (týmy a kola)?')) return; teams=[]; rounds=[]; saveAll(); renderStandings(); hideRoundSection(); });
 
@@ -329,7 +313,7 @@
     function showRoundSection(){ roundSection.style.display='block'; renderRoundInputs(); window.scrollTo({ top: document.body.scrollHeight, behavior:'smooth' }); }
     function hideRoundSection(){ roundSection.style.display='none'; roundNameInput.value=''; scoresInputs.innerHTML=''; }
 
-    function renderRoundInputs(){ scoresInputs.innerHTML=''; teams.forEach((t,idx)=>{ const wrapper = document.createElement('div'); wrapper.className='team-row'; wrapper.innerHTML = `<label style="font-weight:700">${escapeHtml(t.name)}</label><input data-team="${idx}" type="number" value="${(t.scores && typeof t.scores[rounds.length] !== 'undefined')? t.scores[rounds.length]:0}" />`; scoresInputs.appendChild(wrapper); }); }
+    function renderRoundInputs(){ scoresInputs.innerHTML=''; teams.forEach((t,idx)=>{ const wrapper = document.createElement('div'); wrapper.className='team-row'; wrapper.innerHTML = `<label style="font-weight:600; margin-bottom:6px">${escapeHtml(t.name)}</label><input data-team="${idx}" type="number" step="1" value="0" style="width:100%" />`; scoresInputs.appendChild(wrapper); }); }
 
     saveRoundBtn.addEventListener('click', ()=>{
       const roundName = roundNameInput.value.trim() || ('Kolo '+(rounds.length+1));
@@ -344,31 +328,26 @@
 
     cancelRoundBtn.addEventListener('click', ()=>{ if(confirm('Zrušit zadávání výsledků kola?')) hideRoundSection(); });
 
-    exportCsvBtn.addEventListener('click', ()=>{ const csv = buildCsv(); const bom='\uFEFF'; const blob = new Blob([bom+csv], { type:'text/csv;charset=utf-8;' }); const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='pubkviz.csv'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); });
+    exportCsvBtn.addEventListener('click', ()=>{ const csv = buildCsv(); const bom='\uFEFF'; const blob = new Blob([bom+csv], { type:'text/csv;charset=utf-8;' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'pub-kviz-vysledky.csv'; a.click(); URL.revokeObjectURL(url); });
     printBtn.addEventListener('click', ()=>{ window.print(); });
 
-    function buildCsv(){ const header=['Pořadí','Tým']; rounds.forEach((r,i)=>header.push(r.name||('Kolo '+(i+1)))); header.push('Celkem bodů'); const rows=[header]; teams.forEach((t,idx)=>{ const row=[idx+1,t.name]; rounds.forEach((r,i)=> row.push((t.scores&&typeof t.scores[i] !== 'undefined')? t.scores[i]:0)); row.push(t.total||0); rows.push(row); }); return rows.map(r=> r.map(c=> '"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n'); }
+    function buildCsv(){ const header=['Pořadí','Tým']; rounds.forEach((r,i)=>header.push(r.name||('Kolo '+(i+1)))); header.push('Celkem bodů'); const rows=[header]; teams.forEach((t,idx)=>{ const row=[String(idx+1), t.name]; rounds.forEach((r,i)=>row.push(String((t.scores&&t.scores[i])||0))); row.push(String(t.total||0)); rows.push(row); }); return rows.map(r => r.map(v => '"' + String(v).replace(/"/g,'""') + '"').join(',')).join('\n'); }
 
-    // modal helpers
-    function openModal(title, value='', type='text', onSave){ modalTitle.textContent = title; modalInput.value = value===undefined? '': String(value); modalInput.type = (type==='number')? 'number':'text'; modalBackdrop.style.display='flex'; modalBackdrop.setAttribute('aria-hidden','false'); modalSaveHandler = ()=>{ if(type==='number'){ /* keep raw value */ } onSave(modalInput.value); }; setTimeout(()=>{ modalInput.focus(); modalInput.select(); },50); }
+    function openModal(title, value='', type='text', onSave){ modalTitle.textContent = title; modalInput.value = value===undefined ? '' : String(value); modalInput.type = (type==='number') ? 'number' : 'text'; modalInput.focus(); modalInput.select && modalInput.select(); modalSaveHandler = onSave; modalBackdrop.style.display='flex'; modalBackdrop.setAttribute('aria-hidden','false'); }
     function closeModal(){ modalBackdrop.style.display='none'; modalBackdrop.setAttribute('aria-hidden','true'); modalSaveHandler = null; }
     modalSave.addEventListener('click', ()=>{ if(modalSaveHandler) modalSaveHandler(); });
     modalCancel.addEventListener('click', ()=>{ closeModal(); });
     modalBackdrop.addEventListener('click', (e)=>{ if(e.target===modalBackdrop) closeModal(); });
     modalInput.addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ if(modalSaveHandler) modalSaveHandler(); } if(e.key==='Escape'){ closeModal(); } });
 
-    // small toast-like note
-    function flashNote(txt){ const el = document.createElement('div'); el.textContent = txt; el.style.position='fixed'; el.style.right='20px'; el.style.bottom='20px'; el.style.background='linear-gradient(90deg,#e6f0ff,#f3f8ff)'; el.style.padding='10px 14px'; el.style.borderRadius='10px'; el.style.boxShadow='0 8px 20px rgba(2,6,23,0.15)'; document.body.appendChild(el); setTimeout(()=> el.style.opacity='0',1600); setTimeout(()=> el.remove(),2000); }
+    function flashNote(txt){ const el = document.createElement('div'); el.textContent = txt; el.style.position='fixed'; el.style.right='20px'; el.style.bottom='20px'; el.style.background='linear-gradient(90deg,#00AEEF,#007abf)'; el.style.color='#fff'; el.style.padding='10px 14px'; el.style.borderRadius='999px'; el.style.boxShadow='0 10px 25px rgba(0,0,0,0.15)'; el.style.fontWeight='700'; document.body.appendChild(el); setTimeout(()=>el.remove(), 2200); }
 
-    function escapeHtml(text){ text=(text===undefined||text===null)?'':String(text); return text.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'","&#39;"); }
+    function escapeHtml(text){ text=(text===undefined||text===null)?'':String(text); return text.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#39;'); }
 
-    // normalization & init
-    (function normalizeAfterLoad(){ let changed=false; teams.forEach(t=>{ if(!t.scores){ t.scores=[]; changed=true } if(t.scores.length<rounds.length){ t.scores = t.scores.concat(Array(rounds.length - t.scores.length).fill(0)); changed=true } }); if(changed) saveAll(); })();
+    (function normalizeAfterLoad(){ let changed=false; teams.forEach(t=>{ if(!t.scores){ t.scores=[]; changed=true } if(t.scores.length<rounds.length){ t.scores = t.scores.concat(Array(rounds.length - t.scores.length).fill(0)); changed=true; } }); if(changed) saveAll(); })();
 
-    // init render
     renderStandings();
 
-    // keyboard support for adding
     teamNameInput.addEventListener('keydown', (e)=>{ if(e.key==='Enter') addTeamBtn.click(); });
   </script>
 </body>

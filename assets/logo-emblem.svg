@@ -1,57 +1,21 @@
-<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" role="img" aria-label="Logo školy - emblem">
   <defs>
-    <linearGradient id="gBlue" x1="0%" x2="100%" y1="0%" y2="100%">
-      <stop offset="0%" stop-color="#0fb4d9"/>
-      <stop offset="100%" stop-color="#008fb3"/>
-    </linearGradient>
-    <linearGradient id="gOrange" x1="0%" x2="100%" y1="0%" y2="100%">
-      <stop offset="0%" stop-color="#f18b5d"/>
-      <stop offset="100%" stop-color="#e2532f"/>
-    </linearGradient>
-    <linearGradient id="gGreen" x1="0%" x2="100%" y1="0%" y2="100%">
-      <stop offset="0%" stop-color="#7fd45a"/>
-      <stop offset="100%" stop-color="#49a43a"/>
-    </linearGradient>
-    <linearGradient id="gYellow" x1="0%" x2="100%" y1="0%" y2="100%">
-      <stop offset="0%" stop-color="#ffe05c"/>
-      <stop offset="100%" stop-color="#f4bd00"/>
-    </linearGradient>
-    <linearGradient id="gPurple" x1="0%" x2="100%" y1="0%" y2="100%">
-      <stop offset="0%" stop-color="#d7a9e6"/>
-      <stop offset="100%" stop-color="#b887d1"/>
-    </linearGradient>
-
-    <!-- soft inner highlight for each petal -->
-    <radialGradient id="h" cx="30%" cy="25%" r="60%">
-      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.28" />
-      <stop offset="70%" stop-color="#ffffff" stop-opacity="0" />
-    </radialGradient>
-
     <filter id="shadow" x="-40%" y="-40%" width="180%" height="180%">
-      <feDropShadow dx="0" dy="6" stdDeviation="10" flood-color="#000" flood-opacity="0.12" />
+      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#000000" flood-opacity="0.12"/>
     </filter>
+    <radialGradient id="shine" cx="30%" cy="25%" r="60%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.35"/>
+      <stop offset="70%" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
   </defs>
 
   <g transform="translate(300,300)" filter="url(#shadow)">
-    <!-- petal paths: crafted to better match the raster sample proportions -->
-    <path d="M0,-160 C40,-160 85,-140 120,-100 C155,-60 160,-20 145,20 C130,60 95,95 55,115 C15,135 -30,140 -70,125 C-110,110 -140,80 -160,40 C-180,0 -170,-40 -150,-80 C-130,-120 -80,-160 0,-160 Z"
-          fill="url(#gBlue)" />
+    <path d="M0,-180 C58,-180 108,-155 142,-110 C176,-66 180,-20 166,28 C151,75 116,115 70,146 C24,176 -28,182 -79,168 C-130,154 -170,124 -191,82 C-212,40 -208,-10 -183,-54 C-158,-99 -104,-150 0,-180 Z" fill="#00A1C7"/>
+    <path d="M0,-180 C58,-180 108,-155 142,-110 C176,-66 180,-20 166,28 C151,75 116,115 70,146 C24,176 -28,182 -79,168 C-130,154 -170,124 -191,82 C-212,40 -208,-10 -183,-54 C-158,-99 -104,-150 0,-180 Z" fill="#FF7F3F" transform="rotate(72)"/>
+    <path d="M0,-180 C58,-180 108,-155 142,-110 C176,-66 180,-20 166,28 C151,75 116,115 70,146 C24,176 -28,182 -79,168 C-130,154 -170,124 -191,82 C-212,40 -208,-10 -183,-54 C-158,-99 -104,-150 0,-180 Z" fill="#85B03B" transform="rotate(144)"/>
+    <path d="M0,-180 C58,-180 108,-155 142,-110 C176,-66 180,-20 166,28 C151,75 116,115 70,146 C24,176 -28,182 -79,168 C-130,154 -170,124 -191,82 C-212,40 -208,-10 -183,-54 C-158,-99 -104,-150 0,-180 Z" fill="#F7C948" transform="rotate(216)"/>
+    <path d="M0,-180 C58,-180 108,-155 142,-110 C176,-66 180,-20 166,28 C151,75 116,115 70,146 C24,176 -28,182 -79,168 C-130,154 -170,124 -191,82 C-212,40 -208,-10 -183,-54 C-158,-99 -104,-150 0,-180 Z" fill="#9A7AD5" transform="rotate(288)"/>
 
-    <path d="M0,-160 C40,-160 85,-140 120,-100 C155,-60 160,-20 145,20 C130,60 95,95 55,115 C15,135 -30,140 -70,125 C-110,110 -140,80 -160,40 C-180,0 -170,-40 -150,-80 C-130,-120 -80,-160 0,-160 Z"
-          fill="url(#gOrange)" transform="rotate(72)" />
-
-    <path d="M0,-160 C40,-160 85,-140 120,-100 C155,-60 160,-20 145,20 C130,60 95,95 55,115 C15,135 -30,140 -70,125 C-110,110 -140,80 -160,40 C-180,0 -170,-40 -150,-80 C-130,-120 -80,-160 0,-160 Z"
-          fill="url(#gGreen)" transform="rotate(144)" />
-
-    <path d="M0,-160 C40,-160 85,-140 120,-100 C155,-60 160,-20 145,20 C130,60 95,95 55,115 C15,135 -30,140 -70,125 C-110,110 -140,80 -160,40 C-180,0 -170,-40 -150,-80 C-130,-120 -80,-160 0,-160 Z"
-          fill="url(#gYellow)" transform="rotate(216)" />
-
-    <path d="M0,-160 C40,-160 85,-140 120,-100 C155,-60 160,-20 145,20 C130,60 95,95 55,115 C15,135 -30,140 -70,125 C-110,110 -140,80 -160,40 C-180,0 -170,-40 -150,-80 C-130,-120 -80,-160 0,-160 Z"
-          fill="url(#gPurple)" transform="rotate(288)" />
-
-    <!-- subtle highlights (same shape scaled slightly) -->
-    <path d="M0,-160 C40,-160 85,-140 120,-100 C155,-60 160,-20 145,20 C130,60 95,95 55,115 C15,135 -30,140 -70,125 C-110,110 -140,80 -160,40 C-180,0 -170,-40 -150,-80 C-130,-120 -80,-160 0,-160 Z"
-          fill="url(#h)" opacity="0.85" transform="scale(0.98)" />
+    <path d="M0,-180 C58,-180 108,-155 142,-110 C176,-66 180,-20 166,28 C151,75 116,115 70,146 C24,176 -28,182 -79,168 C-130,154 -170,124 -191,82 C-212,40 -208,-10 -183,-54 C-158,-99 -104,-150 0,-180 Z" fill="url(#shine)" opacity="0.8" transform="scale(0.96)"/>
   </g>
 </svg>
