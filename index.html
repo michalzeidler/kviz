@@ -28,10 +28,34 @@
     .round-cell { position:relative }
     .edit-icon { display:none; position:absolute; right:4px; top:4px; font-size:12px; cursor:pointer; color:#666 }
     .round-cell:hover .edit-icon { display:inline-block }
-    th .edit-round { margin-left:6px; font-size:12px; cursor:pointer }
-    @media (max-width:700px) {
-      input[type="text"], input[type="number"] { width: 100%; }
-      .team-row { flex-direction:column; align-items:flex-start; }
+    .round-header { white-space:nowrap }
+    .round-header .edit-round, .round-header .delete-round { margin-left:6px; font-size:12px; cursor:pointer }
+    .manual-order-note { font-size:12px; color:#666; margin-left:8px }
+    .dragging { opacity:0.5 }
+
+    @media print {
+      body { background:#fff; margin:0; }
+      .container { box-shadow:none; max-width:none; padding:0; }
+      #registration > *:not(#teams-list-area),
+      #round-section,
+      #final-section button,
+      .sticky button,
+      .edit-round,
+      .delete-round,
+      .edit-icon,
+      .remove-team,
+      .edit-team,
+      #reset-data,
+      #add-team,
+      #open-round,
+      #finalize,
+      #export-csv,
+      #close-final,
+      .manual-order-note {
+        display:none !important;
+      }
+      table { page-break-inside:avoid; }
+      th, td { font-size:12px; }
     }
   </style>
 </head>
@@ -55,10 +79,13 @@
         <div class="sticky">
           <button id="open-round">Průběžné výsledky (přidat kolo)</button>
           <button id="finalize" class="success">Vyhodnotit</button>
+          <button id="print-results">Tisk / PDF</button>
+          <label class="inline" style="font-size:13px; margin-left:8px;">
+            <input id="auto-sort" type="checkbox" checked /> Automatické řazení
+          </label>
         </div>
         <table id="standings-table">
           <thead>
-            <!-- Dynamicky překreslované -->
             <tr><th>Pořadí</th><th>Tým</th><th>Celkem bodů</th><th>Počet kol</th><th>Akce</th></tr>
           </thead>
           <tbody></tbody>
@@ -96,15 +123,18 @@
     // Data model: teams: [{name, scores:[], total}], rounds: [{name}]
     const STORAGE_TEAMS = 'pubkviz_teams_v1';
     const STORAGE_ROUNDS = 'pubkviz_rounds_v1';
+    const STORAGE_AUTO_SORT = 'pubkviz_auto_sort_v1';
 
     let teams = JSON.parse(localStorage.getItem(STORAGE_TEAMS) || '[]');
     let rounds = JSON.parse(localStorage.getItem(STORAGE_ROUNDS) || '[]');
+    let autoSort = localStorage.getItem(STORAGE_AUTO_SORT) !== 'false';
 
     const teamNameInput = document.getElementById('team-name');
     const addTeamBtn = document.getElementById('add-team');
     const resetBtn = document.getElementById('reset-data');
     const standingsBody = document.querySelector('#standings-table tbody');
     const standingsHead = document.querySelector('#standings-table thead');
+    const autoSortInput = document.getElementById('auto-sort');
 
     const openRoundBtn = document.getElementById('open-round');
     const roundSection = document.getElementById('round-section');
@@ -118,10 +148,12 @@
     const finalResults = document.getElementById('final-results');
     const closeFinalBtn = document.getElementById('close-final');
     const exportCsvBtn = document.getElementById('export-csv');
+    const printBtn = document.getElementById('print-results');
 
     function saveAll() {
       localStorage.setItem(STORAGE_TEAMS, JSON.stringify(teams));
       localStorage.setItem(STORAGE_ROUNDS, JSON.stringify(rounds));
+      localStorage.setItem(STORAGE_AUTO_SORT, String(autoSort));
     }
 
     function recalcTotals() {
@@ -131,9 +163,9 @@
     }
 
     function sortTeams() {
+      if (!autoSort) return;
       teams.sort((a,b) => {
         if ((b.total || 0) !== (a.total || 0)) return (b.total || 0) - (a.total || 0);
-        // tie-breaker: lexicographic name
         return String(a.name).localeCompare(String(b.name), undefined, {sensitivity:'base'});
       });
     }
@@ -143,27 +175,26 @@
       sortTeams();
       saveAll();
 
-      // Build dynamic header: Pořadí, Tým, [kola...], Celkem bodů, Akce
       const headerRow = document.createElement('tr');
       headerRow.innerHTML = `<th>Pořadí</th><th>Tým</th>`;
-      rounds.forEach((r,i) => {
-        headerRow.innerHTML += `<th>${escapeHtml(r.name || ('Kolo ' + (i+1)))}<button class="edit-round" data-round="${i}" title="Upravit název kola">✎</button></th>`;
+      rounds.forEach((r, i) => {
+        headerRow.innerHTML += `<th class="round-header">${escapeHtml(r.name || ('Kolo ' + (i+1)))}<button class="edit-round" data-round="${i}" title="Upravit název kola">✎</button><button class="delete-round danger" data-round="${i}" title="Smazat kolo">✕</button></th>`;
       });
       headerRow.innerHTML += `<th>Celkem bodů</th><th>Akce</th>`;
       standingsHead.innerHTML = '';
       standingsHead.appendChild(headerRow);
 
-      // Build body rows
       standingsBody.innerHTML = '';
       teams.forEach((t, idx) => {
         const tr = document.createElement('tr');
+        tr.dataset.teamIndex = String(idx);
+        tr.draggable = !autoSort;
+        tr.classList.toggle('manual-order-row', !autoSort);
         let rowHtml = `<td class="center">${idx+1}</td><td>${escapeHtml(t.name)}</td>`;
-        // per-round values
         rounds.forEach((r, i) => {
           const val = (t.scores && typeof t.scores[i] !== 'undefined') ? t.scores[i] : 0;
           rowHtml += `<td class="center round-cell" data-team="${idx}" data-round="${i}"><span class="score-val">${val}</span><span class="edit-icon" title="Upravit">✎</span></td>`;
         });
-        // total and actions
         rowHtml += `<td class="center">${t.total || 0}</td>`;
         rowHtml += `<td class="center">
             <button data-i="${idx}" class="remove-team">Odstranit</button>
@@ -176,6 +207,12 @@
       addRemoveHandlers();
       addRoundCellHandlers();
       addRoundHeaderHandlers();
+      attachDragHandlers();
+      updateAutoSortLabel();
+    }
+
+    function updateAutoSortLabel() {
+      autoSortInput.checked = autoSort;
     }
 
     function addRemoveHandlers() {
@@ -200,22 +237,22 @@
     }
 
     function addRoundCellHandlers() {
-      // Delegate clicks on round cells for editing single score
       document.querySelectorAll('.round-cell').forEach(td => {
         td.onclick = (e) => {
-          // Prevent when clicking on buttons like remove/edit-team
-          const teamIdx = Number(td.dataset.team);
-          const roundIdx = Number(td.dataset.round);
-          const current = (teams[teamIdx].scores && typeof teams[teamIdx].scores[roundIdx] !== 'undefined') ? teams[teamIdx].scores[roundIdx] : 0;
-          const raw = prompt('Upravit skóre pro tým "' + teams[teamIdx].name + '" v kole "' + (rounds[roundIdx].name || ('Kolo ' + (roundIdx+1))) + '":', current);
-          if (raw === null) return; // cancelled
-          const val = Number(raw);
-          if (!isFinite(val)) { alert('Neplatné číslo.'); return; }
-          teams[teamIdx].scores[roundIdx] = val;
-          recalcTotals();
-          sortTeams();
-          saveAll();
-          renderStandings();
+          if (e.target.closest('.edit-icon')) {
+            const teamIdx = Number(td.dataset.team);
+            const roundIdx = Number(td.dataset.round);
+            const current = (teams[teamIdx].scores && typeof teams[teamIdx].scores[roundIdx] !== 'undefined') ? teams[teamIdx].scores[roundIdx] : 0;
+            const raw = prompt('Upravit skóre pro tým "' + teams[teamIdx].name + '" v kole "' + (rounds[roundIdx].name || ('Kolo ' + (roundIdx+1))) + '":', current);
+            if (raw === null) return;
+            const val = Number(raw);
+            if (!isFinite(val)) { alert('Neplatné číslo.'); return; }
+            teams[teamIdx].scores[roundIdx] = val;
+            recalcTotals();
+            sortTeams();
+            saveAll();
+            renderStandings();
+          }
         };
       });
     }
@@ -227,17 +264,66 @@
           const i = Number(btn.dataset.round);
           const newName = prompt('Upravit název kola:', rounds[i].name || ('Kolo ' + (i+1)));
           if (newName === null) return;
-          rounds[i].name = newName.trim();
+          rounds[i].name = newName.trim() || (rounds[i].name || ('Kolo ' + (i+1)));
+          saveAll();
+          renderStandings();
+        };
+      });
+
+      document.querySelectorAll('.delete-round').forEach(btn => {
+        btn.onclick = (e) => {
+          e.stopPropagation();
+          const roundIdx = Number(btn.dataset.round);
+          const roundLabel = rounds[roundIdx].name || ('Kolo ' + (roundIdx+1));
+          if (!confirm('Smazat kolo "' + roundLabel + '"? Tato akce odstraní příslušné skóre z všech týmů.')) return;
+          rounds.splice(roundIdx, 1);
+          teams.forEach(t => {
+            t.scores = t.scores || [];
+            t.scores.splice(roundIdx, 1);
+          });
+          recalcTotals();
+          sortTeams();
           saveAll();
           renderStandings();
         };
       });
     }
 
+    function attachDragHandlers() {
+      if (autoSort) return;
+      const rows = standingsBody.querySelectorAll('tr');
+      rows.forEach(row => {
+        row.addEventListener('dragstart', (e) => {
+          row.classList.add('dragging');
+          e.dataTransfer.effectAllowed = 'move';
+          e.dataTransfer.setData('text/plain', row.dataset.teamIndex);
+        });
+
+        row.addEventListener('dragend', () => {
+          row.classList.remove('dragging');
+        });
+
+        row.addEventListener('dragover', (e) => {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'move';
+        });
+
+        row.addEventListener('drop', (e) => {
+          e.preventDefault();
+          const fromIndex = Number(e.dataTransfer.getData('text/plain'));
+          const toIndex = Number(row.dataset.teamIndex);
+          if (Number.isNaN(fromIndex) || Number.isNaN(toIndex) || fromIndex === toIndex) return;
+          const [moved] = teams.splice(fromIndex, 1);
+          teams.splice(toIndex, 0, moved);
+          saveAll();
+          renderStandings();
+        });
+      });
+    }
+
     addTeamBtn.addEventListener('click', () => {
       const name = teamNameInput.value.trim();
       if (!name) { alert('Zadejte název týmu.'); return; }
-      // New team: scores length must match rounds length (fill zero)
       const newTeam = { name, scores: Array(rounds.length).fill(0), total: 0 };
       teams.push(newTeam);
       teamNameInput.value = '';
@@ -259,6 +345,12 @@
       showRoundSection();
     });
 
+    autoSortInput.addEventListener('change', () => {
+      autoSort = autoSortInput.checked;
+      saveAll();
+      renderStandings();
+    });
+
     function showRoundSection() {
       roundSection.style.display = 'block';
       renderRoundInputs();
@@ -272,7 +364,6 @@
 
     function renderRoundInputs() {
       scoresInputs.innerHTML = '';
-      // Render inputs in the same order as current teams array (display order)
       teams.forEach((t, idx) => {
         const div = document.createElement('div');
         div.className = 'team-row';
@@ -288,7 +379,6 @@
 
     saveRoundBtn.addEventListener('click', () => {
       const roundName = roundNameInput.value.trim() || ('Kolo ' + (rounds.length + 1));
-      // Collect scores in same order as teams array currently is (which is sorted/displayed order)
       const inputs = scoresInputs.querySelectorAll('input[data-team]');
       const addedScores = [];
       inputs.forEach(inp => {
@@ -299,14 +389,11 @@
         alert('Chyba: počet vstupů nesouhlasí s počtem týmů.');
         return;
       }
-      // Add round metadata
       rounds.push({ name: roundName });
-      // For each team (in current order), append its score
       teams.forEach((t, idx) => {
         t.scores = t.scores || [];
         t.scores.push(Number(addedScores[idx]) || 0);
       });
-      // Recalc totals, sort and persist, then re-render (so ordering updates immediately)
       recalcTotals();
       sortTeams();
       saveAll();
@@ -321,7 +408,6 @@
 
     finalizeBtn.addEventListener('click', () => {
       if (teams.length === 0) { alert('Žádné týmy.'); return; }
-      // Ensure totals and order are up to date then show final section
       recalcTotals();
       sortTeams();
       showFinalSection();
@@ -353,29 +439,30 @@
       URL.revokeObjectURL(url);
     });
 
+    printBtn.addEventListener('click', () => {
+      window.print();
+    });
+
     function buildCsv() {
-      // Header: Pořadí,Tým,<kola...>,Celkem bodů
       const header = ['Pořadí','Tým'];
-      rounds.forEach((r,i) => header.push(r.name || ('Kolo ' + (i+1))));
+      rounds.forEach((r, i) => header.push(r.name || ('Kolo ' + (i+1))));
       header.push('Celkem bodů');
       const rows = [header];
       teams.forEach((t, idx) => {
         const row = [];
         row.push(String(idx+1));
         row.push(t.name);
-        rounds.forEach((r,i) => {
+        rounds.forEach((r, i) => {
           const val = (t.scores && typeof t.scores[i] !== 'undefined') ? t.scores[i] : 0;
           row.push(String(val));
         });
         row.push(String(t.total || 0));
         rows.push(row);
       });
-      // Convert to CSV, escaping quotes
       return rows.map(r => r.map(cell => '"' + String(cell).replace(/"/g,'""') + '"').join(',')).join('\n');
     }
 
     function buildFinalResults() {
-      // Build table: Rank, Team, [rounds...], Celkem bodů
       const table = document.createElement('table');
       const thead = document.createElement('thead');
       const trh = document.createElement('tr');
@@ -405,7 +492,6 @@
       finalResults.appendChild(table);
     }
 
-    // Utility
     function escapeHtml(text) {
       text = (text === undefined || text === null) ? '' : String(text);
       return text
@@ -416,10 +502,8 @@
         .replaceAll("'", '&#039;');
     }
 
-    // Initialize UI
     renderStandings();
 
-    // If there are rounds but teams were added later, ensure consistent scores length
     (function normalizeAfterLoad() {
       let changed = false;
       teams.forEach(t => {
@@ -432,13 +516,9 @@
       if (changed) saveAll();
     })();
 
-    // Allow pressing Enter to add team
     teamNameInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') addTeamBtn.click();
     });
-
-    // For completeness: export/import (basic) via console commands or future UI additions.
-    // Done.
   </script>
 </body>
 </html>
