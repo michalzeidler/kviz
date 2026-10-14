@@ -65,7 +65,7 @@
     .round-header { white-space:nowrap }
     .round-title{ display:inline-flex; gap:8px; align-items:center; font-weight:700 }
     .round-title .round-actions{ display:inline-flex; gap:6px }
-    .round-actions .icon-btn{ padding:4px }
+    .round-name{ cursor:pointer; }
 
     /* modal */
     .modal-backdrop{ display:none; position:fixed; inset:0; background:rgba(2,6,23,0.6); align-items:center; justify-content:center; z-index:50 }
@@ -81,7 +81,7 @@
     @media print{
       body{background:#fff}
       .container{ box-shadow:none; padding:0; }
-      .sticky, .controls, .btn, .note, input, .edit-icon, .edit-round, .delete-round, .remove-team, .edit-team{ display:none !important }
+      .sticky, .controls, .btn, .note, input, .edit-round, .delete-round, .remove-team, .edit-team{ display:none !important }
       thead th{ background:#f8fafc }
       table { font-size:14px }
     }
@@ -232,8 +232,7 @@
         const name = escapeHtml(r.name || ('Kolo '+(i+1)));
         const th = document.createElement('th');
         th.className = 'round-header';
-        th.innerHTML = `<div class="round-title"><span>${name}</span><span class="round-actions">` +
-          `<button class="icon-btn edit-round" data-round="${i}" title="Upravit název kola">✎</button>` +
+        th.innerHTML = `<div class="round-title"><span class="round-name" data-round="${i}">${name}</span><span class="round-actions">` +
           `<button class="icon-btn delete-round" data-round="${i}" title="Odstranit kolo">🗑</button>` +
           `</span></div>`;
         headerRow.appendChild(th);
@@ -251,13 +250,12 @@
         const orderTd = `<td class="center">${idx+1}</td>`;
         const teamNameHtml = `<td><div class="team-name"><span class="drag-handle" style="margin-right:8px">☰</span><span class="team-label" data-i="${idx}">${escapeHtml(t.name)}</span>` +
           `<span class="icons">` +
-          `<button data-i="${idx}" class="icon-btn edit-team" title="Upravit tým"><svg class="svg" viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button>` +
           `<button data-i="${idx}" class="icon-btn remove-team" title="Odstranit tým"><svg class="svg" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>` +
           `</span></div></td>`;
         let row = orderTd + teamNameHtml;
         rounds.forEach((r,i)=>{
           const val = (t.scores && typeof t.scores[i] !== 'undefined') ? t.scores[i] : 0;
-          row += `<td class="center round-cell" data-team="${idx}" data-round="${i}"><span class="score-val">${val}</span><span class="edit-icon" title="Upravit">✎</span></td>`;
+          row += `<td class="center round-cell" data-team="${idx}" data-round="${i}"><span class="score-val">${val}</span></td>`;
         });
         row += `<td class="center" style="font-weight:800">${t.total||0}</td>`;
         tr.innerHTML = row;
@@ -271,8 +269,7 @@
 
     function addRemoveHandlers(){
       document.querySelectorAll('.remove-team').forEach(btn=>{ btn.onclick = ()=>{ const i=Number(btn.dataset.i); if(!confirm('Opravdu odstranit tým "'+teams[i].name+'"?')) return; teams.splice(i,1); saveAll(); renderStandings(); } });
-      document.querySelectorAll('.edit-team').forEach(btn=>{ btn.onclick = ()=>{ const i=Number(btn.dataset.i); openModal('Upravit název týmu', teams[i].name, 'text', ()=>{ const val = modalInput.value.trim(); if(!val){ alert('Název nesmí být prázdný'); return; } teams[i].name = val; saveAll(); closeModal(); renderStandings(); }); } });
-      // make team name clickable as well
+      // make team name clickable as edit
       document.querySelectorAll('.team-label').forEach(el=>{ el.onclick = ()=>{ const i = Number(el.dataset.i); openModal('Upravit název týmu', teams[i].name, 'text', ()=>{ const val = modalInput.value.trim(); if(!val){ alert('Název nesmí být prázdný'); return; } teams[i].name = val; saveAll(); closeModal(); renderStandings(); }); } });
     }
 
@@ -294,7 +291,9 @@
     }
 
     function addRoundHeaderHandlers(){
-      document.querySelectorAll('.edit-round').forEach(btn=>{ btn.onclick = (e)=>{ e.stopPropagation(); const i = Number(btn.dataset.round); openModal('Upravit název kola', rounds[i].name || ('Kolo '+(i+1)), 'text', ()=>{ const val = modalInput.value.trim(); if(!val){ alert('Název nesmí být prázdný'); return; } rounds[i].name = val; saveAll(); closeModal(); renderStandings(); }); } });
+      // clicking the round name edits it
+      document.querySelectorAll('.round-name').forEach(el=>{ el.onclick = (e)=>{ const i = Number(el.dataset.round); openModal('Upravit název kola', rounds[i].name || ('Kolo '+(i+1)), 'text', ()=>{ const val = modalInput.value.trim(); if(!val){ alert('Název nesmí být prázdný'); return; } rounds[i].name = val; saveAll(); closeModal(); renderStandings(); }); }; });
+      // delete remains via trash icon
       document.querySelectorAll('.delete-round').forEach(btn=>{ btn.onclick = (e)=>{ e.stopPropagation(); const idx = Number(btn.dataset.round); const label = rounds[idx].name || ('Kolo '+(idx+1)); if(!confirm('Opravdu odstranit '+label+'?')) return; rounds.splice(idx,1); teams.forEach(t=>{ if(t.scores){ t.scores.splice(idx,1); } }); recalcTotals(); saveAll(); renderStandings(); } });
     }
 
