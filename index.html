@@ -35,8 +35,10 @@
     .note { font-size:14px; color:var(--muted); margin-top:8px }
 
     table { width:100%; border-collapse:collapse; margin-top:18px; border-radius:10px; overflow:hidden; font-size:18px }
-    thead th { text-align:left; padding:16px 12px; background:linear-gradient(180deg,#f8fbff,#eef6ff); font-weight:800; border-bottom:1px solid #e6edf3; font-size:20px }
-    tbody td { padding:14px 12px; border-bottom:1px solid #f1f5f9; vertical-align:middle }
+    thead th { text-align:left; padding:16px 12px; background:linear-gradient(180deg,#f8fbff,#eef6ff); font-weight:800; border-bottom:1px solid #e6edf3; border-right:1px solid #dfe7f3; font-size:20px }
+    thead th:last-child { border-right:none }
+    tbody td { padding:14px 12px; border-bottom:1px solid #f1f5f9; border-right:1px solid #edf2f7; vertical-align:middle }
+    tbody td:last-child { border-right:none }
     tbody tr:nth-child(odd) { background: #fff }
     tbody tr:nth-child(even) { background:#fbfcfe }
     tbody tr:hover { background: #f3f7ff }
@@ -292,10 +294,7 @@
 
     function addRoundHeaderHandlers(){
       document.querySelectorAll('.edit-round').forEach(btn=>{ btn.onclick = (e)=>{ e.stopPropagation(); const i = Number(btn.dataset.round); openModal('Upravit název kola', rounds[i].name || ('Kolo '+(i+1)), 'text', ()=>{ const val = modalInput.value.trim(); if(!val){ alert('Název nesmí být prázdný'); return; } rounds[i].name = val; saveAll(); closeModal(); renderStandings(); }); } });
-      document.querySelectorAll('.delete-round').forEach(btn=>{ btn.onclick = (e)=>{ e.stopPropagation(); const idx = Number(btn.dataset.round); const label = rounds[idx].name || ('Kolo '+(idx+1)); if(!confirm('Opravdu odstranit '+label+'?')) return; // remove round and scores
-        rounds.splice(idx,1);
-        teams.forEach(t=>{ if(t.scores){ t.scores.splice(idx,1); } });
-        recalcTotals(); saveAll(); renderStandings(); } });
+      document.querySelectorAll('.delete-round').forEach(btn=>{ btn.onclick = (e)=>{ e.stopPropagation(); const idx = Number(btn.dataset.round); const label = rounds[idx].name || ('Kolo '+(idx+1)); if(!confirm('Opravdu odstranit '+label+'?')) return; rounds.splice(idx,1); teams.forEach(t=>{ if(t.scores){ t.scores.splice(idx,1); } }); recalcTotals(); saveAll(); renderStandings(); } });
     }
 
     function attachDragHandlers(){
