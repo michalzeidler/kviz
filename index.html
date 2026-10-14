@@ -25,6 +25,14 @@
     .success { background:#f0fff4; border:1px solid #c7f0d0 }
     .note { font-size:13px; color:#444; margin-top:8px }
     .sticky { position:sticky; top:0; background:#fff; padding-top:6px; padding-bottom:6px }
+    .round-cell { position:relative }
+    .edit-icon { display:none; position:absolute; right:4px; top:4px; font-size:12px; cursor:pointer; color:#666 }
+    .round-cell:hover .edit-icon { display:inline-block }
+    th .edit-round { margin-left:6px; font-size:12px; cursor:pointer }
+    @media (max-width:700px) {
+      input[type="text"], input[type="number"] { width: 100%; }
+      .team-row { flex-direction:column; align-items:flex-start; }
+    }
   </style>
 </head>
 <body>
@@ -50,7 +58,8 @@
         </div>
         <table id="standings-table">
           <thead>
-            <tr><th>Pořadí</th><th>Tým</th><th>Součet bodů</th><th>Počet kol</th><th>Akce</th></tr>
+            <!-- Dynamicky překreslované -->
+            <tr><th>Pořadí</th><th>Tým</th><th>Celkem bodů</th><th>Počet kol</th><th>Akce</th></tr>
           </thead>
           <tbody></tbody>
         </table>
@@ -73,6 +82,9 @@
 
     <section id="final-section" style="display:none; margin-top:16px">
       <h2>Finální vyhodnocení</h2>
+      <div style="margin-bottom:8px">
+        <button id="export-csv">Export CSV</button>
+      </div>
       <div id="final-results"></div>
       <div style="margin-top:8px">
         <button id="close-final">Zavřít</button>
@@ -92,6 +104,7 @@
     const addTeamBtn = document.getElementById('add-team');
     const resetBtn = document.getElementById('reset-data');
     const standingsBody = document.querySelector('#standings-table tbody');
+    const standingsHead = document.querySelector('#standings-table thead');
 
     const openRoundBtn = document.getElementById('open-round');
     const roundSection = document.getElementById('round-section');
@@ -104,6 +117,7 @@
     const finalSection = document.getElementById('final-section');
     const finalResults = document.getElementById('final-results');
     const closeFinalBtn = document.getElementById('close-final');
+    const exportCsvBtn = document.getElementById('export-csv');
 
     function saveAll() {
       localStorage.setItem(STORAGE_TEAMS, JSON.stringify(teams));
@@ -112,15 +126,15 @@
 
     function recalcTotals() {
       teams.forEach(t => {
-        t.total = t.scores.reduce((a,b)=>a+(Number(b)||0), 0);
+        t.total = (t.scores || []).reduce((a,b)=>a+(Number(b)||0), 0);
       });
     }
 
     function sortTeams() {
       teams.sort((a,b) => {
-        if (b.total !== a.total) return b.total - a.total;
+        if ((b.total || 0) !== (a.total || 0)) return (b.total || 0) - (a.total || 0);
         // tie-breaker: lexicographic name
-        return a.name.localeCompare(b.name, undefined, {sensitivity:'base'});
+        return String(a.name).localeCompare(String(b.name), undefined, {sensitivity:'base'});
       });
     }
 
@@ -128,22 +142,40 @@
       recalcTotals();
       sortTeams();
       saveAll();
+
+      // Build dynamic header: Pořadí, Tým, [kola...], Celkem bodů, Akce
+      const headerRow = document.createElement('tr');
+      headerRow.innerHTML = `<th>Pořadí</th><th>Tým</th>`;
+      rounds.forEach((r,i) => {
+        headerRow.innerHTML += `<th>${escapeHtml(r.name || ('Kolo ' + (i+1)))}<button class="edit-round" data-round="${i}" title="Upravit název kola">✎</button></th>`;
+      });
+      headerRow.innerHTML += `<th>Celkem bodů</th><th>Akce</th>`;
+      standingsHead.innerHTML = '';
+      standingsHead.appendChild(headerRow);
+
+      // Build body rows
       standingsBody.innerHTML = '';
       teams.forEach((t, idx) => {
         const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td class="center">${idx+1}</td>
-          <td>${escapeHtml(t.name)}</td>
-          <td class="center">${t.total}</td>
-          <td class="center">${t.scores.length}</td>
-          <td class="center">
+        let rowHtml = `<td class="center">${idx+1}</td><td>${escapeHtml(t.name)}</td>`;
+        // per-round values
+        rounds.forEach((r, i) => {
+          const val = (t.scores && typeof t.scores[i] !== 'undefined') ? t.scores[i] : 0;
+          rowHtml += `<td class="center round-cell" data-team="${idx}" data-round="${i}"><span class="score-val">${val}</span><span class="edit-icon" title="Upravit">✎</span></td>`;
+        });
+        // total and actions
+        rowHtml += `<td class="center">${t.total || 0}</td>`;
+        rowHtml += `<td class="center">
             <button data-i="${idx}" class="remove-team">Odstranit</button>
             <button data-i="${idx}" class="edit-team">Upravit název</button>
-          </td>
-        `;
+          </td>`;
+        tr.innerHTML = rowHtml;
         standingsBody.appendChild(tr);
       });
+
       addRemoveHandlers();
+      addRoundCellHandlers();
+      addRoundHeaderHandlers();
     }
 
     function addRemoveHandlers() {
@@ -163,6 +195,41 @@
             teams[i].name = newName.trim();
             renderStandings();
           }
+        };
+      });
+    }
+
+    function addRoundCellHandlers() {
+      // Delegate clicks on round cells for editing single score
+      document.querySelectorAll('.round-cell').forEach(td => {
+        td.onclick = (e) => {
+          // Prevent when clicking on buttons like remove/edit-team
+          const teamIdx = Number(td.dataset.team);
+          const roundIdx = Number(td.dataset.round);
+          const current = (teams[teamIdx].scores && typeof teams[teamIdx].scores[roundIdx] !== 'undefined') ? teams[teamIdx].scores[roundIdx] : 0;
+          const raw = prompt('Upravit skóre pro tým "' + teams[teamIdx].name + '" v kole "' + (rounds[roundIdx].name || ('Kolo ' + (roundIdx+1))) + '":', current);
+          if (raw === null) return; // cancelled
+          const val = Number(raw);
+          if (!isFinite(val)) { alert('Neplatné číslo.'); return; }
+          teams[teamIdx].scores[roundIdx] = val;
+          recalcTotals();
+          sortTeams();
+          saveAll();
+          renderStandings();
+        };
+      });
+    }
+
+    function addRoundHeaderHandlers() {
+      document.querySelectorAll('.edit-round').forEach(btn => {
+        btn.onclick = (e) => {
+          e.stopPropagation();
+          const i = Number(btn.dataset.round);
+          const newName = prompt('Upravit název kola:', rounds[i].name || ('Kolo ' + (i+1)));
+          if (newName === null) return;
+          rounds[i].name = newName.trim();
+          saveAll();
+          renderStandings();
         };
       });
     }
@@ -205,6 +272,7 @@
 
     function renderRoundInputs() {
       scoresInputs.innerHTML = '';
+      // Render inputs in the same order as current teams array (display order)
       teams.forEach((t, idx) => {
         const div = document.createElement('div');
         div.className = 'team-row';
@@ -220,9 +288,8 @@
 
     saveRoundBtn.addEventListener('click', () => {
       const roundName = roundNameInput.value.trim() || ('Kolo ' + (rounds.length + 1));
-      // Collect scores in same order as teams array currently is (which is sorted)
+      // Collect scores in same order as teams array currently is (which is sorted/displayed order)
       const inputs = scoresInputs.querySelectorAll('input[data-team]');
-      // Build an array of added scores mapped by team name — but teams array is sorted; we should keep consistent: push by team index
       const addedScores = [];
       inputs.forEach(inp => {
         const v = Number(inp.value);
@@ -232,12 +299,14 @@
         alert('Chyba: počet vstupů nesouhlasí s počtem týmů.');
         return;
       }
-      // Add round:
+      // Add round metadata
       rounds.push({ name: roundName });
-      // For each team, append its score
+      // For each team (in current order), append its score
       teams.forEach((t, idx) => {
+        t.scores = t.scores || [];
         t.scores.push(Number(addedScores[idx]) || 0);
       });
+      // Recalc totals, sort and persist, then re-render (so ordering updates immediately)
       recalcTotals();
       sortTeams();
       saveAll();
@@ -252,7 +321,7 @@
 
     finalizeBtn.addEventListener('click', () => {
       if (teams.length === 0) { alert('Žádné týmy.'); return; }
-      // Show final results: order by total and display per-round scores (with rounds headers)
+      // Ensure totals and order are up to date then show final section
       recalcTotals();
       sortTeams();
       showFinalSection();
@@ -270,34 +339,75 @@
 
     closeFinalBtn.addEventListener('click', () => hideFinalSection());
 
+    exportCsvBtn.addEventListener('click', () => {
+      const csv = buildCsv();
+      const bom = '\uFEFF';
+      const blob = new Blob([bom + csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'kviz-vysledky.csv';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    });
+
+    function buildCsv() {
+      // Header: Pořadí,Tým,<kola...>,Celkem bodů
+      const header = ['Pořadí','Tým'];
+      rounds.forEach((r,i) => header.push(r.name || ('Kolo ' + (i+1))));
+      header.push('Celkem bodů');
+      const rows = [header];
+      teams.forEach((t, idx) => {
+        const row = [];
+        row.push(String(idx+1));
+        row.push(t.name);
+        rounds.forEach((r,i) => {
+          const val = (t.scores && typeof t.scores[i] !== 'undefined') ? t.scores[i] : 0;
+          row.push(String(val));
+        });
+        row.push(String(t.total || 0));
+        rows.push(row);
+      });
+      // Convert to CSV, escaping quotes
+      return rows.map(r => r.map(cell => '"' + String(cell).replace(/"/g,'""') + '"').join(',')).join('\n');
+    }
+
     function buildFinalResults() {
-      // Build table: Rank, Team, Total, then each round column
+      // Build table: Rank, Team, [rounds...], Celkem bodů
       const table = document.createElement('table');
       const thead = document.createElement('thead');
       const trh = document.createElement('tr');
-      trh.innerHTML = `<th>Pořadí</th><th>Tým</th><th>Součet</th>`;
+      trh.innerHTML = `<th>Pořadí</th><th>Tým</th>`;
       rounds.forEach((r, i) => {
         trh.innerHTML += `<th>${escapeHtml(r.name || ('Kolo ' + (i+1)))}</th>`;
       });
+      trh.innerHTML += `<th>Celkem bodů</th>`;
       thead.appendChild(trh);
       table.appendChild(thead);
+
       const tbody = document.createElement('tbody');
       teams.forEach((t, idx) => {
         const tr = document.createElement('tr');
-        tr.innerHTML = `<td class="center">${idx+1}</td><td>${escapeHtml(t.name)}</td><td class="center">${t.total}</td>`;
+        let row = `<td class="center">${idx+1}</td><td>${escapeHtml(t.name)}</td>`;
         rounds.forEach((r, i) => {
-          const val = typeof t.scores[i] !== 'undefined' ? t.scores[i] : 0;
-          tr.innerHTML += `<td class="center">${val}</td>`;
+          const val = (t.scores && typeof t.scores[i] !== 'undefined') ? t.scores[i] : 0;
+          row += `<td class="center">${val}</td>`;
         });
+        row += `<td class="center">${t.total || 0}</td>`;
+        tr.innerHTML = row;
         tbody.appendChild(tr);
       });
       table.appendChild(tbody);
+
       finalResults.innerHTML = '';
       finalResults.appendChild(table);
     }
 
     // Utility
     function escapeHtml(text) {
+      text = (text === undefined || text === null) ? '' : String(text);
       return text
         .replaceAll('&','&amp;')
         .replaceAll('<','&lt;')
