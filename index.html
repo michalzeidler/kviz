@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="cs">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Pub kvíz - vyhodnocení</title>
+  <style>
+    body { font-family: Arial, Helvetica, sans-serif; margin: 20px; background:#f7f7f9; color:#222 }
+    h1 { margin-top: 0 }
+    .container { max-width: 1000px; margin: 0 auto; background: #fff; padding:20px; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.07) }
+    label { display:block; margin-top:10px }
+    input[type="text"], input[type="number"] { padding:6px 8px; font-size:14px; width:260px; }
+    button { margin:6px; padding:8px 12px; font-size:14px; cursor:pointer }
+    table { width:100%; border-collapse:collapse; margin-top:12px }
+    th, td { border:1px solid #e1e1e1; padding:8px; text-align:left }
+    th { background:#fafafa }
+    .muted { color:#666; font-size:13px }
+    .controls { margin-top:10px }
+    .inline { display:inline-block; vertical-align:middle; margin-right:8px }
+    .center { text-align:center }
+    #round-form { margin-top:12px; padding:12px; border:1px dashed #ddd; border-radius:6px; background:#fcfcff }
+    .team-row { display:flex; gap:8px; align-items:center; margin-bottom:6px }
+    .small { width:80px }
+    .danger { background:#ffefef; border:1px solid #f5c2c2 }
+    .success { background:#f0fff4; border:1px solid #c7f0d0 }
+    .note { font-size:13px; color:#444; margin-top:8px }
+    .sticky { position:sticky; top:0; background:#fff; padding-top:6px; padding-bottom:6px }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Pub kvíz — vyhodnocování</h1>
+
+    <section id="registration">
+      <h2>Registrace týmů</h2>
+      <div>
+        <label>Název týmu:
+          <input id="team-name" type="text" placeholder="Zadejte název týmu" />
+        </label>
+        <button id="add-team">Přidej tým</button>
+        <button id="reset-data" class="danger">Resetovat data</button>
+        <div class="note">Týmy můžete přidávat kdykoli. Pokud už jsou zadaná kola, nový tým dostane nulu za předchozí kola.</div>
+      </div>
+
+      <div id="teams-list-area">
+        <h3>Průběžné pořadí</h3>
+        <div class="sticky">
+          <button id="open-round">Průběžné výsledky (přidat kolo)</button>
+          <button id="finalize" class="success">Vyhodnotit</button>
+        </div>
+        <table id="standings-table">
+          <thead>
+            <tr><th>Pořadí</th><th>Tým</th><th>Součet bodů</th><th>Počet kol</th><th>Akce</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="round-section" style="display:none">
+      <h2>Zadat výsledky kola</h2>
+      <div id="round-form">
+        <label>Název kola (volitelné):
+          <input id="round-name" type="text" placeholder="Např. Kolo 3 / Bonus" />
+        </label>
+        <div id="scores-inputs"></div>
+        <div style="margin-top:8px">
+          <button id="save-round">Uložit kolo</button>
+          <button id="cancel-round">Zrušit</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="final-section" style="display:none; margin-top:16px">
+      <h2>Finální vyhodnocení</h2>
+      <div id="final-results"></div>
+      <div style="margin-top:8px">
+        <button id="close-final">Zavřít</button>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    // Data model: teams: [{name, scores:[], total}], rounds: [{name}]
+    const STORAGE_TEAMS = 'pubkviz_teams_v1';
+    const STORAGE_ROUNDS = 'pubkviz_rounds_v1';
+
+    let teams = JSON.parse(localStorage.getItem(STORAGE_TEAMS) || '[]');
+    let rounds = JSON.parse(localStorage.getItem(STORAGE_ROUNDS) || '[]');
+
+    const teamNameInput = document.getElementById('team-name');
+    const addTeamBtn = document.getElementById('add-team');
+    const resetBtn = document.getElementById('reset-data');
+    const standingsBody = document.querySelector('#standings-table tbody');
+
+    const openRoundBtn = document.getElementById('open-round');
+    const roundSection = document.getElementById('round-section');
+    const scoresInputs = document.getElementById('scores-inputs');
+    const saveRoundBtn = document.getElementById('save-round');
+    const cancelRoundBtn = document.getElementById('cancel-round');
+    const roundNameInput = document.getElementById('round-name');
+
+    const finalizeBtn = document.getElementById('finalize');
+    const finalSection = document.getElementById('final-section');
+    const finalResults = document.getElementById('final-results');
+    const closeFinalBtn = document.getElementById('close-final');
+
+    function saveAll() {
+      localStorage.setItem(STORAGE_TEAMS, JSON.stringify(teams));
+      localStorage.setItem(STORAGE_ROUNDS, JSON.stringify(rounds));
+    }
+
+    function recalcTotals() {
+      teams.forEach(t => {
+        t.total = t.scores.reduce((a,b)=>a+(Number(b)||0), 0);
+      });
+    }
+
+    function sortTeams() {
+      teams.sort((a,b) => {
+        if (b.total !== a.total) return b.total - a.total;
+        // tie-breaker: lexicographic name
+        return a.name.localeCompare(b.name, undefined, {sensitivity:'base'});
+      });
+    }
+
+    function renderStandings() {
+      recalcTotals();
+      sortTeams();
+      saveAll();
+      standingsBody.innerHTML = '';
+      teams.forEach((t, idx) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="center">${idx+1}</td>
+          <td>${escapeHtml(t.name)}</td>
+          <td class="center">${t.total}</td>
+          <td class="center">${t.scores.length}</td>
+          <td class="center">
+            <button data-i="${idx}" class="remove-team">Odstranit</button>
+            <button data-i="${idx}" class="edit-team">Upravit název</button>
+          </td>
+        `;
+        standingsBody.appendChild(tr);
+      });
+      addRemoveHandlers();
+    }
+
+    function addRemoveHandlers() {
+      document.querySelectorAll('.remove-team').forEach(btn => {
+        btn.onclick = () => {
+          const i = Number(btn.dataset.i);
+          if (!confirm('Opravdu odstranit tým "' + teams[i].name + '"?')) return;
+          teams.splice(i,1);
+          renderStandings();
+        };
+      });
+      document.querySelectorAll('.edit-team').forEach(btn => {
+        btn.onclick = () => {
+          const i = Number(btn.dataset.i);
+          const newName = prompt('Nový název týmu:', teams[i].name);
+          if (newName && newName.trim() !== '') {
+            teams[i].name = newName.trim();
+            renderStandings();
+          }
+        };
+      });
+    }
+
+    addTeamBtn.addEventListener('click', () => {
+      const name = teamNameInput.value.trim();
+      if (!name) { alert('Zadejte název týmu.'); return; }
+      // New team: scores length must match rounds length (fill zero)
+      const newTeam = { name, scores: Array(rounds.length).fill(0), total: 0 };
+      teams.push(newTeam);
+      teamNameInput.value = '';
+      renderStandings();
+    });
+
+    resetBtn.addEventListener('click', () => {
+      if (!confirm('Smazat všechna data (týmy a kola)?')) return;
+      teams = [];
+      rounds = [];
+      saveAll();
+      renderStandings();
+      hideRoundSection();
+      hideFinalSection();
+    });
+
+    openRoundBtn.addEventListener('click', () => {
+      if (teams.length === 0) { alert('Nejprve přidejte alespoň jeden tým.'); return; }
+      showRoundSection();
+    });
+
+    function showRoundSection() {
+      roundSection.style.display = 'block';
+      renderRoundInputs();
+      window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+    }
+    function hideRoundSection() {
+      roundSection.style.display = 'none';
+      roundNameInput.value = '';
+      scoresInputs.innerHTML = '';
+    }
+
+    function renderRoundInputs() {
+      scoresInputs.innerHTML = '';
+      teams.forEach((t, idx) => {
+        const div = document.createElement('div');
+        div.className = 'team-row';
+        div.innerHTML = `
+          <div style="width:260px"><strong>${escapeHtml(t.name)}</strong></div>
+          <div>
+            <input class="small" type="number" min="0" step="1" value="0" data-team="${idx}">
+          </div>
+        `;
+        scoresInputs.appendChild(div);
+      });
+    }
+
+    saveRoundBtn.addEventListener('click', () => {
+      const roundName = roundNameInput.value.trim() || ('Kolo ' + (rounds.length + 1));
+      // Collect scores in same order as teams array currently is (which is sorted)
+      const inputs = scoresInputs.querySelectorAll('input[data-team]');
+      // Build an array of added scores mapped by team name — but teams array is sorted; we should keep consistent: push by team index
+      const addedScores = [];
+      inputs.forEach(inp => {
+        const v = Number(inp.value);
+        addedScores.push(isFinite(v)? v : 0);
+      });
+      if (addedScores.length !== teams.length) {
+        alert('Chyba: počet vstupů nesouhlasí s počtem týmů.');
+        return;
+      }
+      // Add round:
+      rounds.push({ name: roundName });
+      // For each team, append its score
+      teams.forEach((t, idx) => {
+        t.scores.push(Number(addedScores[idx]) || 0);
+      });
+      recalcTotals();
+      sortTeams();
+      saveAll();
+      hideRoundSection();
+      renderStandings();
+      alert('Kolo uloženo: ' + roundName);
+    });
+
+    cancelRoundBtn.addEventListener('click', () => {
+      if (confirm('Zrušit zadávání výsledků kola?')) hideRoundSection();
+    });
+
+    finalizeBtn.addEventListener('click', () => {
+      if (teams.length === 0) { alert('Žádné týmy.'); return; }
+      // Show final results: order by total and display per-round scores (with rounds headers)
+      recalcTotals();
+      sortTeams();
+      showFinalSection();
+    });
+
+    function showFinalSection() {
+      finalSection.style.display = 'block';
+      buildFinalResults();
+      window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+    }
+    function hideFinalSection() {
+      finalSection.style.display = 'none';
+      finalResults.innerHTML = '';
+    }
+
+    closeFinalBtn.addEventListener('click', () => hideFinalSection());
+
+    function buildFinalResults() {
+      // Build table: Rank, Team, Total, then each round column
+      const table = document.createElement('table');
+      const thead = document.createElement('thead');
+      const trh = document.createElement('tr');
+      trh.innerHTML = `<th>Pořadí</th><th>Tým</th><th>Součet</th>`;
+      rounds.forEach((r, i) => {
+        trh.innerHTML += `<th>${escapeHtml(r.name || ('Kolo ' + (i+1)))}</th>`;
+      });
+      thead.appendChild(trh);
+      table.appendChild(thead);
+      const tbody = document.createElement('tbody');
+      teams.forEach((t, idx) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td class="center">${idx+1}</td><td>${escapeHtml(t.name)}</td><td class="center">${t.total}</td>`;
+        rounds.forEach((r, i) => {
+          const val = typeof t.scores[i] !== 'undefined' ? t.scores[i] : 0;
+          tr.innerHTML += `<td class="center">${val}</td>`;
+        });
+        tbody.appendChild(tr);
+      });
+      table.appendChild(tbody);
+      finalResults.innerHTML = '';
+      finalResults.appendChild(table);
+    }
+
+    // Utility
+    function escapeHtml(text) {
+      return text
+        .replaceAll('&','&amp;')
+        .replaceAll('<','&lt;')
+        .replaceAll('>','&gt;')
+        .replaceAll('"','&quot;')
+        .replaceAll("'", '&#039;');
+    }
+
+    // Initialize UI
+    renderStandings();
+
+    // If there are rounds but teams were added later, ensure consistent scores length
+    (function normalizeAfterLoad() {
+      let changed = false;
+      teams.forEach(t => {
+        if (!t.scores) { t.scores = []; changed = true; }
+        if (t.scores.length < rounds.length) {
+          t.scores = t.scores.concat(Array(rounds.length - t.scores.length).fill(0));
+          changed = true;
+        }
+      });
+      if (changed) saveAll();
+    })();
+
+    // Allow pressing Enter to add team
+    teamNameInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') addTeamBtn.click();
+    });
+
+    // For completeness: export/import (basic) via console commands or future UI additions.
+    // Done.
+  </script>
+</body>
+</html>
