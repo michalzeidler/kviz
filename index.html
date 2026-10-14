@@ -5,14 +5,15 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Pub kvíz</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <!-- favicon -->
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <style>
     :root{
       --bg:#f6f8fa;
       --card:#ffffff;
       --muted:#6b7280;
-      --text:#55575a;
-      --primary:#00AEEF;
+      --text:#55575a; /* adjusted to school logo grey */
+      --primary:#00AEEF; /* adjusted to logo blue */
       --accent:#06b6d4;
       --danger:#ef4444;
       --success:#16a34a;
@@ -24,9 +25,10 @@
     h1 { margin:0; font-weight:700; color:var(--text) }
     .container { max-width:1200px; margin: 0 auto; background: var(--card); padding:22px; border-radius:var(--radius); box-shadow:var(--shadow) }
     .header { display:flex; gap:18px; align-items:center; margin-bottom:12px }
-    .logo-screen{ height:120px; width:auto; display:block }
+    .header > div { display:flex; flex-direction:column; justify-content:center }
+    .logo-screen{ height:120px; width:auto; display:block; margin-right:12px }
     .logo-print{ height:160px; width:auto; display:none }
-    @media (max-width:700px){ .header { flex-direction:column; align-items:flex-start } .logo-screen { height:80px } }
+    @media (max-width:700px){ .header { flex-direction:column; align-items:flex-start } .logo-screen { height:80px; margin-right:0 } }
     @media print{ .logo-screen{ display:none !important } .logo-print{ display:block !important } }
     label { display:block; margin-top:10px; color:var(--muted) }
     input[type="text"], input[type="number"] { padding:10px 12px; font-size:16px; width:100%; border:1px solid #e6edf3; border-radius:8px; background:#fff }
@@ -50,6 +52,10 @@
     tbody tr:hover { background: #f3f7ff }
     .center{ text-align:center }
 
+    /* highlight total column in body for quick scan */
+    tbody td:last-child { background: linear-gradient(90deg,#ffffff,#f0f9ff); font-weight:800; border-left:4px solid rgba(0,174,239,0.08); }
+    thead th:last-child { background: linear-gradient(180deg,#eef6ff,#e6f4ff); }
+
     .sticky { position:sticky; top:0; background:var(--card); padding:12px 0; display:flex; gap:8px; align-items:center }
 
     .team-name{ display:flex; align-items:center; gap:10px; font-weight:700 }
@@ -71,12 +77,15 @@
     .drag-handle{ cursor:grab; opacity:0.6; margin-right:8px }
     .dragging{ opacity:0.5 }
 
+    /* print styles (tweak) */
     @media print{
       body{background:#fff}
       .container{ box-shadow:none; padding:0; }
       .sticky, .controls, .btn, .note, input, .edit-round, .delete-round, .remove-team, .edit-team{ display:none !important }
       thead th{ background:#f8fafc }
       table { font-size:14px }
+      /* ensure print logo shows and remains simple */
+      tbody td:last-child { background: none; border-left: none }
     }
 
     @media (max-width:700px){
@@ -148,6 +157,7 @@
 
   </div>
 
+  <!-- Modal backdrop (reused for text/number editing) -->
   <div id="modal-backdrop" class="modal-backdrop" role="dialog" aria-hidden="true">
     <div class="modal" role="document" aria-modal="true">
       <h3 id="modal-title">Upravit</h3>
@@ -170,6 +180,7 @@
     let rounds = JSON.parse(localStorage.getItem(STORAGE_ROUNDS) || '[]');
     let autoSort = localStorage.getItem(STORAGE_AUTO_SORT) !== 'false';
 
+    // UI elements
     const teamNameInput = document.getElementById('team-name');
     const addTeamBtn = document.getElementById('add-team');
     const resetBtn = document.getElementById('reset-data');
@@ -187,6 +198,7 @@
     const exportCsvBtn = document.getElementById('export-csv');
     const printBtn = document.getElementById('print-results');
 
+    // modal
     const modalBackdrop = document.getElementById('modal-backdrop');
     const modalTitle = document.getElementById('modal-title');
     const modalInput = document.getElementById('modal-input');
@@ -214,6 +226,7 @@
       sortTeams();
       saveAll();
 
+      // build header
       const headerRow = document.createElement('tr');
       headerRow.innerHTML = `<th style="width:70px">Pořadí</th><th>Tým</th>`;
       rounds.forEach((r,i)=>{
@@ -229,6 +242,7 @@
       standingsHead.innerHTML = '';
       standingsHead.appendChild(headerRow);
 
+      // body
       standingsBody.innerHTML = '';
       teams.forEach((t,idx)=>{
         const tr = document.createElement('tr');
@@ -256,15 +270,16 @@
 
     function addRemoveHandlers(){
       document.querySelectorAll('.remove-team').forEach(btn=>{ btn.onclick = ()=>{ const i=Number(btn.dataset.i); if(!confirm('Opravdu odstranit tým "'+teams[i].name+'"?')) return; teams.splice(i,1); saveAll(); renderStandings(); }; });
+      // make team name clickable as edit
       document.querySelectorAll('.team-label').forEach(el=>{ el.onclick = ()=>{ const i = Number(el.dataset.i); openModal('Upravit název týmu', teams[i].name, 'text', ()=>{ const val = modalInput.value.trim(); if(!val){ alert('Název týmu nesmí být prázdný.'); return; } teams[i].name = val; saveAll(); closeModal(); renderStandings(); }); }; });
     }
 
     function addRoundCellHandlers(){
       document.querySelectorAll('.round-cell').forEach(td => {
-        td.onclick = ()=>{
+        td.onclick = (e)=>{
           const teamIdx = Number(td.dataset.team);
           const roundIdx = Number(td.dataset.round);
-          openModal('Upravit skóre', (teams[teamIdx].scores && typeof teams[teamIdx].scores[roundIdx] !== 'undefined') ? String(teams[teamIdx].scores[roundIdx]) : '0', 'number', ()=>{
+          openModal('Upravit skóre', (teams[teamIdx].scores && typeof teams[teamIdx].scores[roundIdx] !== 'undefined')? String(teams[teamIdx].scores[roundIdx]) : '0', 'number', ()=>{
             const val = modalInput.value;
             const num = Number(val);
             if(!isFinite(num)){ alert('Neplatné číslo'); return; }
@@ -277,7 +292,9 @@
     }
 
     function addRoundHeaderHandlers(){
-      document.querySelectorAll('.round-name').forEach(el=>{ el.onclick = ()=>{ const i = Number(el.dataset.round); openModal('Upravit název kola', rounds[i].name || ('Kolo '+(i+1)), 'text', ()=>{ const val = modalInput.value.trim(); rounds[i].name = val || ('Kolo '+(i+1)); saveAll(); closeModal(); renderStandings(); }); }; });
+      // clicking the round name edits it
+      document.querySelectorAll('.round-name').forEach(el=>{ el.onclick = (e)=>{ const i = Number(el.dataset.round); openModal('Upravit název kola', rounds[i].name || ('Kolo '+(i+1)), 'text', ()=>{ const val = modalInput.value.trim(); rounds[i].name = val || ('Kolo '+(i+1)); saveAll(); closeModal(); renderStandings(); }); }; });
+      // delete remains via trash icon
       document.querySelectorAll('.delete-round').forEach(btn=>{ btn.onclick = (e)=>{ e.stopPropagation(); const idx = Number(btn.dataset.round); const label = rounds[idx].name || ('Kolo '+(idx+1)); if(!confirm('Opravdu odstranit kolo "'+label+'"?')) return; rounds.splice(idx,1); teams.forEach(t => { if(t.scores){ t.scores.splice(idx,1); } }); recalcTotals(); saveAll(); renderStandings(); }; });
     }
 
@@ -344,10 +361,13 @@
 
     function escapeHtml(text){ text=(text===undefined||text===null)?'':String(text); return text.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#39;'); }
 
+    // normalization & init
     (function normalizeAfterLoad(){ let changed=false; teams.forEach(t=>{ if(!t.scores){ t.scores=[]; changed=true } if(t.scores.length<rounds.length){ t.scores = t.scores.concat(Array(rounds.length - t.scores.length).fill(0)); changed=true; } }); if(changed) saveAll(); })();
 
+    // init render
     renderStandings();
 
+    // keyboard support for adding
     teamNameInput.addEventListener('keydown', (e)=>{ if(e.key==='Enter') addTeamBtn.click(); });
   </script>
 </body>
